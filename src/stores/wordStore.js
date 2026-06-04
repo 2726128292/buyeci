@@ -1,7 +1,7 @@
 import { reactive, toRefs, watch } from 'vue'
 import { loadFromStorage, saveToStorage } from '../utils/storage'
 import { speakText, setSpeechConfig, getSpeechConfig } from '../composables/useSpeech'
-import { escapeHTML, shuffle, getToday, normalizeStudyStats, normalizeCheckInState, normalizeWordExamples, isCopyBook, formatTime } from '../utils/helpers'
+import { bookData } from '../data/index.js'
 
 // ===== Reactive State =====
 const state = reactive({
@@ -88,39 +88,45 @@ export function useWordStore() {
 
 // ===== Data Management =====
 export function initDefaultData() {
-  state.wordBooks = [
-    {
-      id: 'book1',
-      name: 'CET-4 高频',
-      coopEnabled: false,
-      coopBookId: null,
-      words: [
-        { word: 'abandon', meaning: '放弃', root: 'a+band', memo: '谐音"一本的"', note: '', review: false, mastered: false, studied: false },
-        { word: 'diligent', meaning: '勤奋的', root: 'di+lig', memo: '立刻行动', note: '', review: false, mastered: false, studied: false },
-        { word: 'phenomenon', meaning: '现象', root: 'pheno出现', memo: '非诺么农', note: '', review: false, mastered: false, studied: false }
-      ],
-      units: [{ start: 0, count: 3 }]
-    },
-    {
-      id: 'book2',
-      name: '考研核心',
-      coopEnabled: false,
-      coopBookId: null,
-      words: [
-        { word: 'ubiquitous', meaning: '无处不在的', root: 'ubi=where', memo: 'u比quitous', note: '', review: false, mastered: false, studied: false },
-        { word: 'zenith', meaning: '顶点', root: 'zeni', memo: '极你死', note: '', review: false, mastered: false, studied: false }
-      ],
-      units: [{ start: 0, count: 2 }]
-    },
-    {
-      id: 'book3',
-      name: '我的收藏',
-      coopEnabled: false,
-      coopBookId: null,
-      words: [],
-      units: []
-    }
-  ]
+  state.wordBooks = bookData.map(b => ({
+    id: b.id,
+    name: b.name,
+    coopEnabled: false,
+    coopBookId: null,
+    words: b.words.map(w => ({
+      word: w.word,
+      meaning: w.meaning,
+      root: w.root || '',
+      memo: w.memo || '',
+      note: '',
+      review: false,
+      mastered: false,
+      studied: false,
+    })),
+    units: buildUnits(b.words.length, b.unitSize || 20),
+  }))
+  // 添加一个我的收藏本
+  state.wordBooks.push({
+    id: 'favorites',
+    name: '我的收藏',
+    coopEnabled: false,
+    coopBookId: null,
+    words: [],
+    units: [],
+  })
+}
+
+function buildUnits(total, size) {
+  const units = []
+  let start = 0
+  let num = 1
+  while (start < total) {
+    const count = Math.min(size, total - start)
+    units.push({ start, count, number: num, name: `单元${num}` })
+    start += count
+    num++
+  }
+  return units
 }
 
 export function loadData() {
