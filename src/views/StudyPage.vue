@@ -147,7 +147,7 @@ function toggleLockMode() {
 function setStudyMode(mode) {
   store.studyMode = mode
   store.currentWordIndex = 0
-  store.showDetail = false
+  store.showDetail = !store.fastMode
   forgetActive.value = false
   saveData()
 }
@@ -165,7 +165,7 @@ function onUnitChange() {
       if (i < book.words.length) store.activeRangeIndices.push(i)
     }
     store.currentWordIndex = unit.start
-    store.showDetail = false
+    store.showDetail = !store.fastMode
     forgetActive.value = false
   }
   saveData()
@@ -271,7 +271,7 @@ function advanceWord() {
       } else {
         store.currentWordIndex = unmasteredIndices[0]
       }
-      store.showDetail = false
+      store.showDetail = !store.fastMode
       forgetActive.value = false
       return
     }
@@ -288,7 +288,7 @@ function advanceWord() {
       } else {
         store.currentWordIndex = unitIndices[0]
       }
-      store.showDetail = false
+      store.showDetail = !store.fastMode
       forgetActive.value = false
       return
     }
@@ -299,7 +299,7 @@ function advanceWord() {
   } else {
     store.currentWordIndex = indices[0]
   }
-  store.showDetail = false
+  store.showDetail = !store.fastMode
   forgetActive.value = false
 }
 
