@@ -1,5 +1,5 @@
 <template>
-  <div class="page active" id="studyPage">
+  <div class="page active" id="studyPage" :class="{ 'controls-open': controlsOpen }">
     <div class="study-header">
       <div class="book-row">
         <span class="current-book-name" id="currentBookName">{{ currentBook?.name || '无单词本' }}</span>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   useWordStore, getCurrentBook, getCurrentWord, saveData,
@@ -177,7 +177,9 @@ function toggleDetail() {
 
 function speakCurrent() {
   const w = currentWord.value
-  if (w) speakText(w.word)
+  if (w) {
+    nextTick(() => speakText(w.word))
+  }
 }
 
 function toggleReview() {
@@ -288,7 +290,6 @@ function advanceWord() {
       }
       store.showDetail = false
       forgetActive.value = false
-      if (store.autoSpeak) speakCurrent()
       return
     }
   }
@@ -300,7 +301,6 @@ function advanceWord() {
   }
   store.showDetail = false
   forgetActive.value = false
-  if (store.autoSpeak) speakCurrent()
 }
 
 function getUnitIndices() {
@@ -356,16 +356,14 @@ function handleKeydown(e) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
-  // Auto speak on mount
-  if (store.autoSpeak && currentWord.value) {
-    setTimeout(() => speakText(currentWord.value.word), 300)
-  }
 })
 
 // Watch for word changes to speak
 watch(() => store.currentWordIndex, () => {
-  if (store.autoSpeak && currentWord.value) {
-    speakText(currentWord.value.word)
+  if (store.autoSpeak) {
+    nextTick(() => {
+      if (currentWord.value) speakText(currentWord.value.word)
+    })
   }
-})
+}, { immediate: true })
 </script>
