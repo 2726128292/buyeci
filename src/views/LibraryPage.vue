@@ -73,24 +73,56 @@
           <input type="text" class="search-box" v-model="wordSearch" placeholder="🔍 搜索" style="flex:1;min-width:120px;padding:6px 10px;">
         </div>
         <div class="word-list" id="libWordListContainer">
-          <div v-for="(item, idx) in filteredWordList" :key="idx" class="list-item">
-            <div class="list-content" @click="item.open = !item.open">
-              <div class="list-word">
-                <div class="list-word-left">
-                  <input type="checkbox" :checked="selectedWords.has(item.realIndex)" @click.stop @change="toggleWordSelect(item.realIndex)" class="word-checkbox" :data-index="item.realIndex">
-                  <span class="list-speaker" @click.stop="speakWord(item.word.word)">🔊</span>
-                  <span>{{ item.word.word }}</span>
-                  <span v-if="item.word.review" class="list-review-star">⭐</span>
-                  <span v-if="item.word.mastered" class="list-mastered-icon">✅</span>
+          <!-- 按单元分组模式 -->
+          <template v-if="store.unitGroupMode && !wordSearch.trim()">
+            <div v-for="unit in unitsWithWords" :key="unit.index" class="unit-group">
+              <div class="unit-header" @click="toggleUnitCollapsed(unit.index)">
+                <span class="unit-title">{{ unit.name }} ({{ unit.words.length }}词)</span>
+                <span class="unit-toggle">{{ store.unitCollapsed[unit.index] ? '展开' : '折叠' }}</span>
+              </div>
+              <div v-show="!store.unitCollapsed[unit.index]">
+                <div v-for="(item, idx) in unit.words" :key="item.realIndex" class="list-item">
+                  <div class="list-content" @click="item.open = !item.open">
+                    <div class="list-word">
+                      <div class="list-word-left">
+                        <input type="checkbox" :checked="selectedWords.has(item.realIndex)" @click.stop @change="toggleWordSelect(item.realIndex)" class="word-checkbox" :data-index="item.realIndex">
+                        <span class="list-speaker" @click.stop="speakWord(item.word.word)">🔊</span>
+                        <span>{{ item.word.word }}</span>
+                        <span v-if="item.word.review" class="list-review-star">⭐</span>
+                        <span v-if="item.word.mastered" class="list-mastered-icon">✅</span>
+                      </div>
+                    </div>
+                    <div class="list-detail" v-show="item.open">
+                      <div class="list-meaning">{{ item.word.meaning || '无' }}</div>
+                      <div class="list-root">词根: {{ item.word.root || '无' }} · 助记: {{ item.word.memo || '无' }}</div>
+                      <div class="list-note" v-if="item.word.note">📝 {{ item.word.note }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="list-detail" v-show="item.open">
-                <div class="list-meaning">{{ item.word.meaning || '无' }}</div>
-                <div class="list-root">词根: {{ item.word.root || '无' }} · 助记: {{ item.word.memo || '无' }}</div>
-                <div class="list-note" v-if="item.word.note">📝 {{ item.word.note }}</div>
+            </div>
+          </template>
+          <!-- 平铺模式 -->
+          <template v-else>
+            <div v-for="(item, idx) in filteredWordList" :key="idx" class="list-item">
+              <div class="list-content" @click="item.open = !item.open">
+                <div class="list-word">
+                  <div class="list-word-left">
+                    <input type="checkbox" :checked="selectedWords.has(item.realIndex)" @click.stop @change="toggleWordSelect(item.realIndex)" class="word-checkbox" :data-index="item.realIndex">
+                    <span class="list-speaker" @click.stop="speakWord(item.word.word)">🔊</span>
+                    <span>{{ item.word.word }}</span>
+                    <span v-if="item.word.review" class="list-review-star">⭐</span>
+                    <span v-if="item.word.mastered" class="list-mastered-icon">✅</span>
+                  </div>
+                </div>
+                <div class="list-detail" v-show="item.open">
+                  <div class="list-meaning">{{ item.word.meaning || '无' }}</div>
+                  <div class="list-root">词根: {{ item.word.root || '无' }} · 助记: {{ item.word.memo || '无' }}</div>
+                  <div class="list-note" v-if="item.word.note">📝 {{ item.word.note }}</div>
+                </div>
               </div>
             </div>
-          </div>
+          </template>
           <div v-if="filteredWordList.length === 0" style="text-align:center;padding:40px;color:var(--text-secondary);">暂无单词</div>
         </div>
         <div class="library-action-dock compact-library-dock">
@@ -135,8 +167,35 @@ const filteredWordList = computed(() => {
   return words
 })
 
+const unitsWithWords = computed(() => {
+  const book = store.wordBooks.find(b => b.id === selectedBookId.value)
+  if (!book || !book.units) return []
+  return book.units.map((unit, idx) => {
+    const unitIndices = []
+    for (let i = unit.start; i < unit.start + unit.count; i++) {
+      if (i < book.words.length) unitIndices.push(i)
+    }
+    // Apply filters
+    let wordItems = unitIndices.map(i => ({ word: book.words[i], realIndex: i, open: false }))
+    if (wordSearch.value.trim()) {
+      const q = wordSearch.value.toLowerCase()
+      wordItems = wordItems.filter(item => item.word.word.toLowerCase().includes(q) || (item.word.meaning || '').toLowerCase().includes(q))
+    }
+    if (store.masteredFilterMode === 'mastered') wordItems = wordItems.filter(i => i.word.mastered)
+    else if (store.masteredFilterMode === 'unmastered') wordItems = wordItems.filter(i => !i.word.mastered)
+    else if (store.masteredFilterMode === 'unstudied') wordItems = wordItems.filter(i => !i.word.studied)
+    // Ensure collapsed state exists
+    if (store.unitCollapsed[idx] === undefined) store.unitCollapsed[idx] = false
+    return { index: idx, name: unit.name || `单元${unit.number || idx + 1}`, words: wordItems }
+  }).filter(u => u.words.length > 0)
+})
+
 function toggleUnitGroup() {
   store.unitGroupMode = !store.unitGroupMode
+}
+
+function toggleUnitCollapsed(idx) {
+  store.unitCollapsed[idx] = !store.unitCollapsed[idx]
 }
 
 function setMasteredFilter(mode) {
