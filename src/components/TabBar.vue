@@ -42,6 +42,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWordStore } from '../stores/wordStore'
+import { switchTab } from '../stores/wordStore'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,7 +51,7 @@ const store = useWordStore()
 const activeTab = computed(() => route.name || 'home')
 
 function goTo(page) {
-  store.switchTab(page)
+  switchTab(page)
   router.push('/' + page)
 }
 </script>
